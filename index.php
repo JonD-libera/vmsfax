@@ -22,14 +22,42 @@ function getFaxes($user, $pass, $date_from, $date_to) {
 }
 
 function sendFax($voip_user, $voip_pass, $filename, $to_number) {
-    // Convert the file to PDF if it's not already
-    system('pandoc ' . $filename . ' -o ' . $filename . '.pdf');
-    $filename .= '.pdf';
+    // Ensure the file was uploaded successfully
+    if (!file_exists($filename)) {
+        echo "<p>Error: File not found: $filename</p>";
+        return;
+    }
 
-    // Send the fax using the API
+    // Generate the new filename for the PDF file
+    $new_filename = '/tmp/' . uniqid() . '.pdf';
+
+    // Move the uploaded file to a new location
+    if (!move_uploaded_file($filename, $new_filename)) {
+        echo "<p>Error: Could not move uploaded file.</p>";
+        return;
+    }
+
+    // Ensure the file is now available before processing
+    if (!file_exists($new_filename)) {
+        echo "<p>Error: Moved file not found.</p>";
+        return;
+    }
+
+    // Now process the moved file
+    system('pandoc ' . $new_filename . ' -o ' . $new_filename);
+    
+    // Read and encode the file contents for the fax
+    $pdf_content = file_get_contents($new_filename);
+    if (!$pdf_content) {
+        echo "<p>Error reading PDF file.</p>";
+        return;
+    }
+
+    $file = base64_encode($pdf_content);
+
+    // Send the fax using the VoIP.ms API
     $method = "sendFaxMessage";
-    $station_id = "1234";
-    $file = base64_encode(file_get_contents($filename));
+    $station_id = "1234";  // Replace with actual station ID if necessary
     $data = array(
         'api_username' => $voip_user,
         'api_password' => $voip_pass,
@@ -56,6 +84,9 @@ function sendFax($voip_user, $voip_pass, $filename, $to_number) {
     } else {
         echo "<p>Error sending fax: " . $response['status'] . "</p>";
     }
+
+    // Optionally clean up the temporary file
+    unlink($new_filename);
 }
 
 // Default date range (last 7 days)
