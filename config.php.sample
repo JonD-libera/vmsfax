@@ -1,0 +1,13 @@
+<?php
+// Prevent direct access to this file
+if (basename($_SERVER['PHP_SELF']) === basename(__FILE__)) {
+    http_response_code(403);
+    exit('Direct access not allowed.');
+}
+
+// VoIP.ms API credentials
+$from_numbers = 'yourtn';
+$voip_user = 'youruser';
+$voip_pass = 'yourpass';
+
+?>
