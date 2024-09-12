@@ -9,9 +9,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-function getFaxes($user, $pass, $date_from, $date_to) {
+function writeToLog($message) {
+    $log_file = '/var/log/fax/fax_log.txt';
+    $log_message = date('Y-m-d H:i:s') . ' - ' . $message . PHP_EOL;
+    file_put_contents($log_file, $log_message, FILE_APPEND);
+}
+
+function getFaxes($user, $pass, $date_from, $date_to, $folder = 'INBOX') {
     $method = "getFaxMessages";
-    $url = "https://voip.ms/api/v1/rest.php?api_username={$user}&api_password={$pass}&folder=INBOX&method={$method}&from={$date_from}&to={$date_to}";
+    $url = "https://voip.ms/api/v1/rest.php?api_username={$user}&api_password={$pass}&folder={$folder}&method={$method}&from={$date_from}&to={$date_to}";
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_URL, $url);
@@ -44,6 +50,7 @@ function sendFax($voip_user, $voip_pass, $filename, $to_number) {
     }
 
     // Now process the moved file
+
     system('pandoc ' . $new_filename . ' -o ' . $new_filename);
     
     // Read and encode the file contents for the fax
@@ -101,9 +108,10 @@ if (isset($_GET['date_from']) && isset($_GET['date_to'])) {
     $date_from = $_GET['date_from'];
     $date_to = $_GET['date_to'];
 }
+$folder = $_GET['folder'] ?? 'INBOX';
 
 // Fetch faxes
-$faxes = getFaxes($voip_user, $voip_pass, $date_from, $date_to);
+$faxes = getFaxes($voip_user, $voip_pass, $date_from, $date_to, $folder);
 ?>
 
 <!DOCTYPE html>
@@ -132,6 +140,11 @@ $faxes = getFaxes($voip_user, $voip_pass, $date_from, $date_to);
     <input type="date" id="date_from" name="date_from" value="<?= $date_from ?>">
     <label for="date_to">To:</label>
     <input type="date" id="date_to" name="date_to" value="<?= $date_to ?>">
+    <label for="folder">Folder:</label>
+    <select id="folder" name="folder">
+        <option value="INBOX" <?= $folder === 'INBOX' ? 'selected' : '' ?>>INBOX</option>
+        <option value="SENT" <?= $folder === 'SENT' ? 'selected' : '' ?>>SENT</option>
+    </select>
     <button type="submit">Filter</button>
 </form>
 
@@ -187,4 +200,3 @@ $faxes = getFaxes($voip_user, $voip_pass, $date_from, $date_to);
 
 </body>
 </html>
-
